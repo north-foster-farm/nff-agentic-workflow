@@ -78,9 +78,8 @@ same ones. Each holds exactly one value.
 - Saved views replace automatic labels: GitHub filters on fields,
   dependencies and dates directly.
 
-Until the organization fields exist, an issue carries them as a line in
-its body (`Stage: ready. Owner: claude.`), and the coordinator moves
-them onto the fields when they do.
+The fields exist (created 2026-11-11). A field is set through the REST
+API by option name; `scripts/set-field.sh` does it in either repository.
 
 ## Milestones
 

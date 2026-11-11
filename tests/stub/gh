@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# A stand-in for gh in the helper tests. It logs every call to
+# $STUB_LOG (arguments, then any JSON body sent with --input -) and
+# replays responses recorded from the real API (tests/fixtures/,
+# recorded 2026-11-11 from this repository).
+fx="$(cd "$(dirname "$0")/../fixtures" && pwd)"
+args=("$@")
+printf 'gh %s\n' "$*" >> "$STUB_LOG"
+
+jq_filter="" body=""
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[$i]}" in
+    --jq) jq_filter="${args[$((i + 1))]}" ;;
+    --input) body=$(cat); printf '  body %s\n' "$body" >> "$STUB_LOG" ;;
+  esac
+done
+
+case "$1 $2" in
+  "repo view") out='{"nameWithOwner":"north-foster-farm/nff-agentic-workflow"}' ;;
+  "api "*)
+    case "$*" in
+      *milestones*) out=$(cat "$fx/milestones.json") ;;
+      *"-X DELETE"*|*"--silent"*) out="" ;;
+      *"-X POST"*"/issues "*|*"-X POST repos/"*"/issues -f"*) out=$(cat "$fx/issue.json") ;;
+      *) out=$(cat "$fx/issue.json") ;;
+    esac ;;
+  *) out="" ;;
+esac
+
+if [ -n "$out" ] && [ -n "$jq_filter" ]; then
+  printf '%s' "$out" | jq -r "$jq_filter"
+elif [ -n "$out" ] && [[ " $* " != *" --silent "* ]]; then
+  printf '%s\n' "$out"
+fi

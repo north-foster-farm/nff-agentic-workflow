@@ -1,0 +1,45 @@
+name: plan-check (this repository)
+
+# This repository's own caller of the reusable plan check. It is also
+# the model for the project repositories' callers (docs/plan-check.md).
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: "Issue to check (blank re-flags hard blocks)"
+        required: false
+
+permissions: {}
+
+jobs:
+  issue:
+    if: >-
+      github.event_name == 'issues'
+      || (github.event_name == 'workflow_dispatch'
+      && inputs.issue-number != '')
+    uses: ./.github/workflows/plan-check.yml
+    with:
+      mode: issue
+      issue-number: ${{ inputs.issue-number }}
+      ref: ${{ github.sha }}
+    permissions:
+      contents: read
+      issues: write
+
+  hard-blocks:
+    if: >-
+      github.event_name == 'schedule'
+      || (github.event_name == 'workflow_dispatch'
+      && inputs.issue-number == '')
+    uses: ./.github/workflows/plan-check.yml
+    with:
+      mode: hard-blocks
+      ref: ${{ github.sha }}
+    permissions:
+      contents: read
+      issues: write

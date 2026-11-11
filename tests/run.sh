@@ -5,7 +5,8 @@ here="$(cd "$(dirname "$0")" && pwd)"
 scripts="$here/../scripts"
 export PATH="$here/stub:$PATH"
 export STUB_LOG="$(mktemp)"
-export NFF_REPO=north-foster-farm/nff-agentic-workflow
+pr=north-foster-farm/nff-agentic-workflow
+export NFF_REPO=$pr
 trap 'rm -f "$STUB_LOG"' EXIT
 
 fails=0 runs=0
@@ -53,13 +54,15 @@ expect_logged 'repos/other-org/other-repo/issues/12/issue-field-values' \
 # link-blocker (the fixture's id is 6333284390)
 reset
 "$scripts/link-blocker.sh" 3 other-org/other-repo#9 >/dev/null
-expect_logged 'POST repos/north-foster-farm/nff-agentic-workflow/issues/3/dependencies/blocked_by -F issue_id=6333284390' \
+expect_logged "POST repos/$pr/issues/3/dependencies/blocked_by \
+-F issue_id=6333284390" \
   'blocker linked across repositories'
 expect_logged 'repos/other-org/other-repo/issues/9' \
   'blocker id read from its own repository'
 reset
-"$scripts/link-blocker.sh" --remove 3 4 >/dev/null
-expect_logged 'DELETE repos/north-foster-farm/nff-agentic-workflow/issues/3/dependencies/blocked_by/6333284390' \
+"$scripts/link-blocker.sh" --remove 3 99 >/dev/null
+expect_logged "DELETE repos/$pr/issues/3/dependencies/blocked_by/\
+6333284390" \
   'blocker removed'
 expect_status nonzero 'self-block refused' "$scripts/link-blocker.sh" 3 3
 expect_status nonzero 'one argument refused' "$scripts/link-blocker.sh" 3
@@ -67,7 +70,7 @@ expect_status nonzero 'one argument refused' "$scripts/link-blocker.sh" 3
 # move-milestone (the fixture's "Next release" is number 2)
 reset
 "$scripts/move-milestone.sh" 5 https://github.com/o/r/issues/6 >/dev/null
-expect_logged 'PATCH repos/north-foster-farm/nff-agentic-workflow/issues/5 -F milestone=2' \
+expect_logged "PATCH repos/$pr/issues/5 -F milestone=2" \
   'issue moved to the milestone'
 expect_logged 'PATCH repos/o/r/issues/6 -F milestone=2' \
   'a URL reference moves an issue in its own repository'
@@ -98,7 +101,7 @@ esac
 expect_not_logged 'POST' 'dry run creates nothing'
 reset
 "$scripts/file-tree.sh" 4 "$tmp/tree.json" >/dev/null 2>&1
-expect_logged 'repos/north-foster-farm/nff-agentic-workflow/issues/4/sub_issues' \
+expect_logged "repos/$pr/issues/4/sub_issues" \
   'feature filed under the parent'
 expect_logged 'type=Feature' 'a parent node is a Feature'
 expect_logged 'type=Task' 'a leaf node is a Task'
@@ -118,6 +121,68 @@ expect_not_logged 'POST' 'a bad tree files nothing'
 printf '%s' '[{"body":"no title"}]' > "$tmp/notitle.json"
 expect_status nonzero 'missing title refused' "$scripts/file-tree.sh" \
   4 "$tmp/notitle.json"
+
+# plan-check. Fixtures are scratch issues in this repository: #12 sits
+# at level 4 with no fields, #10 is complete at level 3, #5 already has
+# a plan-check comment, #4 is closed, and #5 is a ready issue blocked by
+# #6 (owner james).
+export GH_TOKEN=unused
+check() { PLAN_CHECK_DRY=1 "$scripts/plan-check.sh" "$@" 2>&1; }
+has() { case "$1" in *"$2"*) ok ;; *) fail "$3 (output: $1)" ;; esac; }
+lacks() { case "$1" in *"$2"*) fail "$3 (output: $1)" ;; *) ok ;; esac; }
+
+reset
+out=$(check issue $pr#12)
+has "$out" 'It has no Stage' 'missing Stage reported'
+has "$out" 'It has no Owner' 'missing Owner reported'
+has "$out" '"Done when"' 'missing Done when reported'
+has "$out" 'level 4' 'depth beyond three reported'
+has "$out" '<!-- plan-check:issue -->' 'comment carries its marker'
+out=$(check issue $pr#10)
+has "$out" '#10: ok' 'a complete issue passes'
+out=$(check issue $pr#5)
+has "$out" 'already reported' 'the check comments once'
+lacks "$out" 'WOULD COMMENT' 'no second comment'
+out=$(check issue $pr#4)
+has "$out" 'closed; skipped' 'a closed issue is skipped'
+
+reset
+"$scripts/plan-check.sh" issue $pr#12 >/dev/null 2>&1
+expect_logged "POST repos/$pr/issues/12/comments" 'a comment is posted'
+expect_not_logged 'PATCH' 'plan-check never patches an issue'
+expect_not_logged 'issue-field-values -X POST' 'plan-check never sets a field'
+reset
+"$scripts/plan-check.sh" issue $pr#10 >/dev/null 2>&1
+expect_not_logged 'comments -f' 'a passing issue gets no comment'
+
+out=$(HARD_BLOCK_HOURS=0 check hard-blocks)
+has "$out" "WOULD COMMENT on $pr#6" 'a stale hard block is re-flagged'
+has "$out" "$pr#5 is ready" 'the reminder names the waiting work'
+has "$out" '<!-- plan-check:hard-block -->' 'reminder carries its marker'
+out=$(HARD_BLOCK_HOURS=100000 check hard-blocks)
+lacks "$out" 'WOULD COMMENT' 'a recent hard block is left alone'
+has "$out" 'wait' 'a recent hard block says why'
+expect_status nonzero 'unknown mode refused' "$scripts/plan-check.sh" nope
+
+# sync-labels. The fixtures are real label lists: this repository after
+# a sync, and the site repository, which lacks "depth: approved".
+site=north-foster-farm/north-foster-farm
+reset
+out=$("$scripts/sync-labels.sh" $pr)
+has "$out" "'depth: approved' ok" 'a synced repository is unchanged'
+expect_not_logged 'label create' 'nothing to create when in sync'
+reset
+out=$("$scripts/sync-labels.sh" --dry-run $site)
+has "$out" "'needs: qa' ok" 'existing labels match'
+has "$out" "'depth: approved' would be created" 'a missing label is found'
+expect_not_logged 'label create' 'dry run creates nothing'
+reset
+"$scripts/sync-labels.sh" $site >/dev/null
+expect_logged "label create depth: approved -R $site -c fbca04" \
+  'a missing label is created'
+expect_not_logged 'label create needs' 'matching labels are left alone'
+expect_not_logged 'label delete' 'labels are never deleted'
+expect_status nonzero 'bad repository refused' "$scripts/sync-labels.sh" x
 
 echo "$((runs - fails))/$runs passed"
 [ "$fails" -eq 0 ]

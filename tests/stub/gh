@@ -15,17 +15,35 @@ for ((i = 0; i < ${#args[@]}; i++)); do
   esac
 done
 
+# A recorded GET response, found by its path with / turned into _ and
+# the query dropped (tests/fixtures/api/).
+recorded=""
+if [ "$1" = api ] && [[ " $* " != *" -X "* ]]; then
+  for a in "${args[@]}"; do
+    case "$a" in
+      repos/*)
+        f="$fx/api/$(printf '%s' "$a" | sed 's/?.*//; s#/#_#g').json"
+        [ -f "$f" ] && recorded="$f"
+        break ;;
+    esac
+  done
+fi
+
+if [ -n "$recorded" ]; then
+  out=$(cat "$recorded")
+else
 case "$1 $2" in
-  "repo view") out='{"nameWithOwner":"north-foster-farm/nff-agentic-workflow"}' ;;
+  "repo view")
+    out='{"nameWithOwner":"north-foster-farm/nff-agentic-workflow"}' ;;
   "api "*)
     case "$*" in
       *milestones*) out=$(cat "$fx/milestones.json") ;;
       *"-X DELETE"*|*"--silent"*) out="" ;;
-      *"-X POST"*"/issues "*|*"-X POST repos/"*"/issues -f"*) out=$(cat "$fx/issue.json") ;;
       *) out=$(cat "$fx/issue.json") ;;
     esac ;;
   *) out="" ;;
 esac
+fi
 
 if [ -n "$out" ] && [ -n "$jq_filter" ]; then
   printf '%s' "$out" | jq -r "$jq_filter"

@@ -16,6 +16,9 @@ several Claude agents in tmux panes. The flow is in
 - `scripts/poll-plan.sh`: its read-only plan lines (Stage changes, new
   blocked-by links, stale hard blocks); `tests/poll-plan.test.sh`
   tests it.
+- `scripts/coord-log.sh`: posts a coordinator log entry (#18) and an
+  optional note on the affected issue, refusing text that looks like an
+  email, phone number or token; `tests/coord-log.test.sh` tests it.
 
 ## Trust
 

@@ -11,6 +11,9 @@ several Claude agents in tmux panes. The flow is in
   qa, security, communications) and this repository's own.
 - `scripts/bullpen.sh`: opens, closes and lays out the panes.
 - `scripts/poll.sh`: the coordinator's GitHub poll.
+- `scripts/poll-plan.sh`: its read-only plan lines (Stage changes, new
+  blocked-by links, stale hard blocks); `tests/poll-plan.test.sh`
+  tests it.
 
 ## Trust
 

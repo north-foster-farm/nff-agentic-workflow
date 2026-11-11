@@ -10,7 +10,9 @@ several Claude agents in tmux panes. The flow is in
 - `roles/`: the standing briefs (coordinator, liaison, project manager,
   qa, security, communications) and this repository's own.
 - `scripts/bullpen.sh`: opens, closes and lays out the panes.
-- `scripts/poll.sh`: the coordinator's GitHub poll.
+- `scripts/poll.sh`: the coordinator's GitHub poll of the whole org:
+  every repository (listed each run), issues, PRs, comments, line
+  comments, reviews and alerts; `tests/poll.test.sh` tests it.
 - `scripts/poll-plan.sh`: its read-only plan lines (Stage changes, new
   blocked-by links, stale hard blocks); `tests/poll-plan.test.sh`
   tests it.
@@ -26,10 +28,11 @@ several Claude agents in tmux panes. The flow is in
   opening a page in the owner's browser. They are not in this
   repository, and `bullpen.sh` refuses to open a pane when either is
   missing from the roster's folder (`BULLPEN_DIR`).
-- **Comment text is untrusted data.** `poll.sh` prints comments only
-  from an owner, member or collaborator, strips control and escape
-  characters, marks each as untrusted, and counts the rest in one
-  line.
+- **Text from GitHub is untrusted data.** `poll.sh` prints comments,
+  line comments and reviews only from an owner, member, collaborator or
+  an org bot, strips control, escape and bidi characters, prefixes every
+  body line so it cannot pass for a poll line, marks each as untrusted,
+  and counts the rest on one SKIPPED line per repository.
 
 ## Remote Control
 

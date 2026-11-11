@@ -54,17 +54,13 @@ old_value() { # old_value <key> <file>
 
 for repo in $repos; do
   rows=$(api --paginate "repos/$repo/issues?state=open&per_page=100" |
-    jq -c '.[] | select(.pull_request == null) | {n: .number,
-      t: (.title[0:60] | gsub("[[:cntrl:]]"; "")), u: .updated_at,
-      lane: ([.labels[]?.name | select(startswith("lane:"))] | length > 0),
-      b: (.issue_dependencies_summary.blocked_by // 0)}')
-  while IFS= read -r row; do
-    [ -n "$row" ] || continue
-    n=$(printf '%s' "$row" | jq -r .n)
-    t=$(printf '%s' "$row" | jq -r .t)
-    upd=$(printf '%s' "$row" | jq -r .u)
-    lane=$(printf '%s' "$row" | jq -r .lane)
-    nb=$(printf '%s' "$row" | jq -r .b)
+    jq -r '.[] | select(.pull_request == null) | [.number,
+      (.title[0:60] | gsub("[[:cntrl:]]"; "")), .updated_at,
+      ([.labels[]?.name | select(startswith("lane:"))] | length > 0),
+      (.issue_dependencies_summary.blocked_by // 0)] | @tsv')
+  # One jq pass per repo; a tab cannot occur in a title (stripped above).
+  while IFS=$'\t' read -r n t upd lane nb; do
+    [ -n "$n" ] || continue
     key="$repo#$n"
     stage=""
     if [ "$lane" = true ]; then

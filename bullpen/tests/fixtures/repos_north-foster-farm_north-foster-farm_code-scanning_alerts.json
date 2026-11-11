@@ -1,0 +1,59 @@
+[
+  {
+    "number": 15,
+    "created_at": "2026-10-18T23:08:59Z",
+    "updated_at": "2026-11-11T23:49:28Z",
+    "url": "https://api.github.com/repos/north-foster-farm/north-foster-farm/code-scanning/alerts/15",
+    "html_url": "https://github.com/north-foster-farm/north-foster-farm/security/code-scanning/15",
+    "state": "fixed",
+    "fixed_at": "2026-11-11T23:49:28Z",
+    "dismissed_by": null,
+    "dismissed_at": null,
+    "dismissed_reason": null,
+    "dismissed_comment": null,
+    "rule": {
+      "id": "js/stack-trace-exposure",
+      "severity": "warning",
+      "description": "Information exposure through a stack trace",
+      "name": "js/stack-trace-exposure",
+      "tags": [
+        "external/cwe/cwe-209",
+        "external/cwe/cwe-497",
+        "security"
+      ],
+      "full_description": "Propagating stack trace information to an external user can unintentionally reveal implementation details that are useful to an attacker for developing a subsequent exploit.",
+      "help": "# Information exposure through a stack trace\nSoftware developers often add stack traces to error messages, as a debugging aid. Whenever that error message occurs for an end user, the developer can use the stack trace to help identify how to fix the problem. In particular, stack traces can tell the developer more about the sequence of events that led to a failure, as opposed to merely the final state of the software when the error occurred.\n\nUnfortunately, the same information can be useful to an attacker. The sequence of function names in a stack trace can reveal the structure of the application as well as any internal components it relies on. Furthermore, the error message at the top of a stack trace can include information such as server-side file names and SQL code that the application relies on, allowing an attacker to fine-tune a subsequent injection attack.\n\n\n## Recommendation\nSend the user a more generic error message that reveals less information. Either suppress the stack trace entirely, or log it only on the server.\n\n\n## Example\nIn the following example, an exception is caught and its stack trace is sent back to the remote user as part of the HTTP response. As such, the user is able to see a detailed stack trace, which may contain sensitive information.\n\n\n```javascript\nvar http = require('http');\n\nhttp.createServer(function onRequest(req, res) {\n  var body;\n  try {\n    body = handleRequest(req);\n  }\n  catch (err) {\n    res.statusCode = 500;\n    res.setHeader(\"Content-Type\", \"text/plain\");\n    res.end(err.stack); // NOT OK\n    return;\n  }\n  res.statusCode = 200;\n  res.setHeader(\"Content-Type\", \"application/json\");\n  res.setHeader(\"Content-Length\", body.length);\n  res.end(body);\n}).listen(3000);\n\n```\nInstead, the stack trace should be logged only on the server. That way, the developers can still access and use the error log, but remote users will not see the information:\n\n\n```javascript\nvar http = require('http');\n\nhttp.createServer(function onRequest(req, res) {\n  var body;\n  try {\n    body = handleRequest(req);\n  }\n  catch (err) {\n    res.statusCode = 500;\n    res.setHeader(\"Content-Type\", \"text/plain\");\n    log(\"Exception occurred\", err.stack);\n    res.end(\"An exception occurred\"); // OK\n    return;\n  }\n  res.statusCode = 200;\n  res.setHeader(\"Content-Type\", \"application/json\");\n  res.setHeader(\"Content-Length\", body.length);\n  res.end(body);\n}).listen(3000);\n\n```\n\n## References\n* OWASP: [Improper Error Handling](https://owasp.org/www-community/Improper_Error_Handling).\n* Common Weakness Enumeration: [CWE-209](https://cwe.mitre.org/data/definitions/209.html).\n* Common Weakness Enumeration: [CWE-497](https://cwe.mitre.org/data/definitions/497.html).\n",
+      "security_severity_level": "medium"
+    },
+    "tool": {
+      "name": "CodeQL",
+      "guid": null,
+      "version": "2.27.4"
+    },
+    "most_recent_instance": {
+      "ref": "refs/heads/next",
+      "analysis_key": ".github/workflows/codeql.yml:codeql",
+      "environment": "{}",
+      "category": "/language:javascript-typescript",
+      "state": "fixed",
+      "commit_sha": "d0f70538cfca0fba44298d4a108533c185be89b5",
+      "message": {
+        "text": "This information exposed to the user depends on stack trace information.",
+        "markdown": "This information exposed to the user depends on [stack trace information](netlify/functions/lib/backup.mjs#L216C12-L216C17)."
+      },
+      "location": {
+        "path": "netlify/functions/backup.mjs",
+        "start_line": 20,
+        "end_line": 20,
+        "start_column": 23,
+        "end_column": 43
+      },
+      "classifications": []
+    },
+    "instances_url": "https://api.github.com/repos/north-foster-farm/north-foster-farm/code-scanning/alerts/15/instances",
+    "dismissal_approved_by": null,
+    "assignees": [],
+    "linked_pull_requests": [],
+    "linked_issues": []
+  }
+]

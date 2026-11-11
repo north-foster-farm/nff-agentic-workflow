@@ -13,14 +13,15 @@ yourself.
 
 ## Poll GitHub
 
-From the moment `/bullpen` runs until you stop, poll both repos:
+From the moment `/bullpen` runs until you stop, poll the whole org:
 
 ```
 ~/.claude/skills/bullpen/scripts/poll.sh
 ```
 
-It prints every issue, PR and comment new or edited since its last
-run, then `CADENCE 5m`, `1h` or `1d`: 5 minutes while there is
+It prints every repo (REPO on a new one), issue, PR, comment, line
+comment, review and alert new or edited since its last run, each with
+its full timestamp, then `CADENCE 5m`, `1h` or `1d`: 5 minutes while there is
 activity, hourly after 2 quiet hours, daily after 2 more. Keep exactly
 one poll cron (CronCreate) at that cadence; when the line changes,
 delete the cron and create one at the new cadence. Any activity drops

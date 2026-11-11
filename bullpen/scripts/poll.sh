@@ -7,6 +7,8 @@
 #   CADENCE 1h   none for 2 hours
 #   CADENCE 1d   none for 4 hours
 #
+# It also prints plan lines from poll-plan.sh, kept beside it.
+#
 # The coordinator keeps one cron at that cadence and swaps it when the
 # line changes. Any new activity drops the cadence back to 5m.
 set -euo pipefail
@@ -91,6 +93,20 @@ if command -v tmux >/dev/null && tmux has-session 2>/dev/null; then
     echo "PANE $role $pstate | $seen"
     [ "$pstate" = IDLE ] || found=1
   done <<< "$(tmux list-panes -a -F '#{pane_id} #{@role}' 2>/dev/null)"
+fi
+
+# Plan lines (poll-plan.sh, read-only): a lane-held issue's new or
+# changed Stage (STAGE), new blocked-by links (BLOCK), and hard blocks
+# owned by james that have been silent too long (HARD). STAGE and BLOCK
+# count as activity; HARD does not, so a stale block keeps being listed
+# without holding the poll at 5 minutes.
+plan=$("$(dirname "$0")/poll-plan.sh" 2>&1) ||
+  plan="PLAN poll-plan.sh failed: $(printf %s "$plan" | tail -1 | cut -c1-150)"
+if [ -n "$plan" ]; then
+  printf '%s\n' "$plan"
+  if printf '%s\n' "$plan" | grep -qE '^(STAGE|BLOCK|PLAN) '; then
+    found=1
+  fi
 fi
 
 # claude-link: every message waiting in to-coordinator/ is printed on

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# A stand-in for gh in the poll-plan tests: replays responses recorded
+# from the real API (../fixtures/, recorded 2026-11-11 from the
+# nff-agentic-workflow repository), found by the request path with /
+# turned into _ and the query dropped. Every call is logged to
+# $STUB_LOG.
+fx="$(cd "$(dirname "$0")/../fixtures" && pwd)"
+printf 'gh %s\n' "$*" >> "$STUB_LOG"
+jq_filter=""
+file=""
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[$i]}" in
+    --jq) jq_filter="${args[$((i + 1))]}" ;;
+    repos/*)
+      [ -n "$file" ] ||
+        file="$fx/$(printf '%s' "${args[$i]}" | sed 's/?.*//; s#/#_#g').json"
+      ;;
+  esac
+done
+[ -n "$file" ] && [ -f "$file" ] || { echo "no fixture for: $*" >&2; exit 1; }
+if [ -n "$jq_filter" ]; then jq -r "$jq_filter" "$file"; else cat "$file"; fi

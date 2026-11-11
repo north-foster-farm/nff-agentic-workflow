@@ -35,6 +35,18 @@ resume or after a
 Agents and James post as the same login. Tell James's instructions by
 content.
 
+The poll also prints plan lines (`poll-plan.sh`, read-only), one per
+item:
+
+- `STAGE repo#N old>new | title`: a lane-held issue (one with a `lane:`
+  label) is new or changed Stage. The first run only records the state.
+- `BLOCK repo#N <- repo#M | title`: a new open blocked-by link.
+- `HARD repo#M owner james, Nh silent | blocks repo#N (stage)`: an open
+  blocker owned by James whose blocked work is ready or active, with no
+  comment from an owner, member or collaborator for 24 hours. Chase it
+  as the planning rules say; it prints on every poll while it holds.
+- `PLAN ...`: the plan lines failed; read the message.
+
 ## Work the queue
 
 For each new issue or comment:

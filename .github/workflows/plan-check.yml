@@ -1,0 +1,66 @@
+name: plan-check
+
+# The reusable plan check (planning.md, "Enforcement"). It checks and
+# reports; it never rewrites an issue. A project calls it like this:
+#
+#   jobs:
+#     plan-check:
+#       uses: north-foster-farm/nff-agentic-workflow/.github/workflows/plan-check.yml@main
+#       with:
+#         mode: issue            # or hard-blocks, from a schedule
+#       permissions:
+#         contents: read
+#         issues: write
+#
+# See docs/plan-check.md for the full caller.
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "issue (check one issue) or hard-blocks (re-flag)"
+        type: string
+        default: issue
+      issue-number:
+        description: "The issue to check; defaults to the event's issue"
+        type: string
+        default: ""
+      ref:
+        description: "The ref of nff-agentic-workflow whose scripts run"
+        type: string
+        default: main
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Fetch the plan-check scripts
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: north-foster-farm/nff-agentic-workflow
+          ref: ${{ inputs.ref }}
+          path: .plan-check
+          persist-credentials: false
+
+      - name: Check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NFF_REPO: ${{ github.repository }}
+          MODE: ${{ inputs.mode }}
+          ISSUE: ${{ inputs.issue-number || github.event.issue.number }}
+        run: |
+          case "$MODE" in
+            issue)
+              [ -n "$ISSUE" ] || { echo "no issue to check"; exit 1; }
+              .plan-check/scripts/plan-check.sh issue "$ISSUE" ;;
+            hard-blocks)
+              .plan-check/scripts/plan-check.sh hard-blocks ;;
+            *)
+              echo "unknown mode: $MODE"; exit 1 ;;
+          esac

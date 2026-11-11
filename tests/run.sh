@@ -153,5 +153,67 @@ expect_status nonzero 'a child of a level-3 issue refused' \
 expect_status 0 '--allow-deep passes a deep parent' \
   "$scripts/file-tree.sh" --dry-run --allow-deep 10 "$tmp/one.json"
 
+# plan-check. Fixtures are scratch issues in this repository: #12 sits
+# at level 4 with no fields, #10 is complete at level 3, #5 already has
+# a plan-check comment, #4 is closed, and #5 is a ready issue blocked by
+# #6 (owner james).
+export GH_TOKEN=unused
+check() { PLAN_CHECK_DRY=1 "$scripts/plan-check.sh" "$@" 2>&1; }
+has() { case "$1" in *"$2"*) ok ;; *) fail "$3 (output: $1)" ;; esac; }
+lacks() { case "$1" in *"$2"*) fail "$3 (output: $1)" ;; *) ok ;; esac; }
+
+reset
+out=$(check issue $pr#12)
+has "$out" 'It has no Stage' 'missing Stage reported'
+has "$out" 'It has no Owner' 'missing Owner reported'
+has "$out" '"Done when"' 'missing Done when reported'
+has "$out" 'level 4' 'depth beyond three reported'
+has "$out" '<!-- plan-check:issue -->' 'comment carries its marker'
+out=$(check issue $pr#10)
+has "$out" '#10: ok' 'a complete issue passes'
+out=$(check issue $pr#5)
+has "$out" 'already reported' 'the check comments once'
+lacks "$out" 'WOULD COMMENT' 'no second comment'
+out=$(check issue $pr#4)
+has "$out" 'closed; skipped' 'a closed issue is skipped'
+
+reset
+"$scripts/plan-check.sh" issue $pr#12 >/dev/null 2>&1
+expect_logged "POST repos/$pr/issues/12/comments" 'a comment is posted'
+expect_not_logged 'PATCH' 'plan-check never patches an issue'
+expect_not_logged 'issue-field-values -X POST' 'plan-check never sets a field'
+reset
+"$scripts/plan-check.sh" issue $pr#10 >/dev/null 2>&1
+expect_not_logged 'comments -f' 'a passing issue gets no comment'
+
+out=$(HARD_BLOCK_HOURS=0 check hard-blocks)
+has "$out" "WOULD COMMENT on $pr#6" 'a stale hard block is re-flagged'
+has "$out" "$pr#5 is ready" 'the reminder names the waiting work'
+has "$out" '<!-- plan-check:hard-block -->' 'reminder carries its marker'
+out=$(HARD_BLOCK_HOURS=100000 check hard-blocks)
+lacks "$out" 'WOULD COMMENT' 'a recent hard block is left alone'
+has "$out" 'wait' 'a recent hard block says why'
+expect_status nonzero 'unknown mode refused' "$scripts/plan-check.sh" nope
+
+# sync-labels. The fixtures are real label lists: this repository after
+# a sync, and the site repository, which lacks "depth: approved".
+site=north-foster-farm/north-foster-farm
+reset
+out=$("$scripts/sync-labels.sh" $pr)
+has "$out" "'depth: approved' ok" 'a synced repository is unchanged'
+expect_not_logged 'label create' 'nothing to create when in sync'
+reset
+out=$("$scripts/sync-labels.sh" --dry-run $site)
+has "$out" "'needs: qa' ok" 'existing labels match'
+has "$out" "'depth: approved' would be created" 'a missing label is found'
+expect_not_logged 'label create' 'dry run creates nothing'
+reset
+"$scripts/sync-labels.sh" $site >/dev/null
+expect_logged "label create depth: approved -R $site -c fbca04" \
+  'a missing label is created'
+expect_not_logged 'label create needs' 'matching labels are left alone'
+expect_not_logged 'label delete' 'labels are never deleted'
+expect_status nonzero 'bad repository refused' "$scripts/sync-labels.sh" x
+
 echo "$((runs - fails))/$runs passed"
 [ "$fails" -eq 0 ]

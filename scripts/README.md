@@ -10,6 +10,8 @@ issue is a number (in `$NFF_REPO`, else the current repository),
 | `file-tree.sh` | Files a JSON tree under a parent as sub-issues |
 | `link-blocker.sh` | Links, or with `--remove` unlinks, a blocker |
 | `move-milestone.sh` | Moves issues to the next milestone |
+| `sync-labels.sh` | Makes the shared labels (`../labels.json`) exist |
+| `plan-check.sh` | The checks behind the plan-check workflow |
 
 ```
 scripts/set-field.sh --stage "in review" --owner james 540 541

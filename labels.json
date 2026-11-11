@@ -1,0 +1,22 @@
+[
+  {
+    "name": "needs: qa",
+    "color": "0e8a16",
+    "description": "Review still owed (#527)"
+  },
+  {
+    "name": "needs: security",
+    "color": "b60205",
+    "description": "Review still owed (#527)"
+  },
+  {
+    "name": "needs: comms",
+    "color": "5319e7",
+    "description": "Review still owed (#527)"
+  },
+  {
+    "name": "depth: approved",
+    "color": "fbca04",
+    "description": "The owner approved a tree deeper than three levels"
+  }
+]

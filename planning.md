@@ -10,7 +10,9 @@ repository is a bug here.
 Three levels by default:
 
 1. **Release issue.** One per repository, in that repository's "Next
-   release" milestone.
+   release" milestone. Optional: a repository may run a release from
+   its milestone alone until it needs the issue (the dashboard has only
+   the milestone today). When there is one, it is level 1.
 2. **Feature issues.** Sub-issues of the release. Issue type: Feature.
 3. **Work issues.** Sub-issues of a feature. Issue type: Task.
 
@@ -83,7 +85,8 @@ them onto the fields when they do.
 ## Milestones
 
 A milestone is a release. Each repository has a "Next release"
-milestone holding the release issue and everything in scope. An
+milestone holding everything in scope, and the release issue when it
+has one. An
 unscheduled backlog milestone holds what has no release.
 
 - When a release ships, close its milestone and recreate "Next
@@ -99,11 +102,19 @@ as it can before the blocker, then stops there.
 
 - The blocker's Owner says who must act and its Kind says what is
   asked.
-- Urgency comes from the tree: **hard** when nothing else can proceed,
-  **upcoming** when work will reach it, **deferred** when it waits on
-  a decision to start at all.
-- A hard block owned by the owner is re-flagged on GitHub after 24
-  hours.
+- Urgency has three meanings:
+  - **Hard:** the work waiting on it is ready or started. The owner is
+    chased.
+  - **Upcoming:** the work hasn't reached it. The owner is told once,
+    about a day before it is needed.
+  - **Deferred:** the owner chose to park it. No alerts until it is
+    picked back up.
+- "Defer it" is always an acceptable answer. "Queue it, I know I'm the
+  bottleneck" means spec, scope and plan to the end, then block on the
+  owner's leaf and flag it once.
+- **The chase channel.** A hard block owned by the owner is re-flagged
+  on GitHub after 24 hours, plus a push notice once the owner lifts the
+  no-notices rule for hard blocks.
 - Waiting on capacity is not a blocker. A ready issue with no
   blocked-by link is waiting on a free lane. Ready work that piles up is
   reported as short capacity.
@@ -145,7 +156,7 @@ to 50 issues.
 - When one repository consumes what the other emits, the emitter lands
   first.
 
-## Review runs
+## Reviews
 
 Each issue names the reviews it needs.
 

@@ -5,7 +5,8 @@ here="$(cd "$(dirname "$0")" && pwd)"
 scripts="$here/../scripts"
 export PATH="$here/stub:$PATH"
 export STUB_LOG="$(mktemp)"
-export NFF_REPO=north-foster-farm/nff-agentic-workflow
+pr=north-foster-farm/nff-agentic-workflow
+export NFF_REPO=$pr
 trap 'rm -f "$STUB_LOG"' EXIT
 
 fails=0 runs=0
@@ -53,13 +54,15 @@ expect_logged 'repos/other-org/other-repo/issues/12/issue-field-values' \
 # link-blocker (the fixture's id is 6333284390)
 reset
 "$scripts/link-blocker.sh" 3 other-org/other-repo#9 >/dev/null
-expect_logged 'POST repos/north-foster-farm/nff-agentic-workflow/issues/3/dependencies/blocked_by -F issue_id=6333284390' \
+expect_logged "POST repos/$pr/issues/3/dependencies/blocked_by \
+-F issue_id=6333284390" \
   'blocker linked across repositories'
 expect_logged 'repos/other-org/other-repo/issues/9' \
   'blocker id read from its own repository'
 reset
-"$scripts/link-blocker.sh" --remove 3 4 >/dev/null
-expect_logged 'DELETE repos/north-foster-farm/nff-agentic-workflow/issues/3/dependencies/blocked_by/6333284390' \
+"$scripts/link-blocker.sh" --remove 3 99 >/dev/null
+expect_logged "DELETE repos/$pr/issues/3/dependencies/blocked_by/\
+6333284390" \
   'blocker removed'
 expect_status nonzero 'self-block refused' "$scripts/link-blocker.sh" 3 3
 expect_status nonzero 'one argument refused' "$scripts/link-blocker.sh" 3
@@ -67,7 +70,7 @@ expect_status nonzero 'one argument refused' "$scripts/link-blocker.sh" 3
 # move-milestone (the fixture's "Next release" is number 2)
 reset
 "$scripts/move-milestone.sh" 5 https://github.com/o/r/issues/6 >/dev/null
-expect_logged 'PATCH repos/north-foster-farm/nff-agentic-workflow/issues/5 -F milestone=2' \
+expect_logged "PATCH repos/$pr/issues/5 -F milestone=2" \
   'issue moved to the milestone'
 expect_logged 'PATCH repos/o/r/issues/6 -F milestone=2' \
   'a URL reference moves an issue in its own repository'
@@ -98,7 +101,7 @@ esac
 expect_not_logged 'POST' 'dry run creates nothing'
 reset
 "$scripts/file-tree.sh" 4 "$tmp/tree.json" >/dev/null 2>&1
-expect_logged 'repos/north-foster-farm/nff-agentic-workflow/issues/4/sub_issues' \
+expect_logged "repos/$pr/issues/4/sub_issues" \
   'feature filed under the parent'
 expect_logged 'type=Feature' 'a parent node is a Feature'
 expect_logged 'type=Task' 'a leaf node is a Task'
@@ -118,6 +121,37 @@ expect_not_logged 'POST' 'a bad tree files nothing'
 printf '%s' '[{"body":"no title"}]' > "$tmp/notitle.json"
 expect_status nonzero 'missing title refused' "$scripts/file-tree.sh" \
   4 "$tmp/notitle.json"
+
+# file-tree: milestones, labels and the parent's real depth (fixtures:
+# #4 is a root, #9 its child, #10 its grandchild; labels as recorded).
+printf '%s' '[{"title":"X","milestone":"Next release",
+  "body":"## Done when\n- [ ] ok"}]' > "$tmp/ms.json"
+reset
+"$scripts/file-tree.sh" 4 "$tmp/ms.json" >/dev/null 2>&1
+expect_logged 'milestone=2' 'a known milestone is used'
+printf '%s' '[{"title":"X","milestone":"No such milestone"}]' \
+  > "$tmp/badms.json"
+reset
+expect_status nonzero 'unknown milestone refused' \
+  "$scripts/file-tree.sh" 4 "$tmp/badms.json"
+expect_not_logged 'POST' 'an unknown milestone files nothing'
+printf '%s' '[{"title":"X","children":[{"title":"Y","labels":["no such"]}]}]' \
+  > "$tmp/badlabel.json"
+reset
+expect_status nonzero 'unknown label refused' \
+  "$scripts/file-tree.sh" --dry-run 4 "$tmp/badlabel.json"
+expect_not_logged 'POST' 'an unknown label files nothing'
+printf '%s' '[{"title":"Child"}]' > "$tmp/one.json"
+printf '%s' '[{"title":"Child","children":[{"title":"Grandchild"}]}]' \
+  > "$tmp/two.json"
+expect_status 0 'one level under a level-2 parent is allowed' \
+  "$scripts/file-tree.sh" --dry-run 9 "$tmp/one.json"
+expect_status nonzero 'two levels under a level-2 parent refused' \
+  "$scripts/file-tree.sh" --dry-run 9 "$tmp/two.json"
+expect_status nonzero 'a child of a level-3 issue refused' \
+  "$scripts/file-tree.sh" --dry-run 10 "$tmp/one.json"
+expect_status 0 '--allow-deep passes a deep parent' \
+  "$scripts/file-tree.sh" --dry-run --allow-deep 10 "$tmp/one.json"
 
 echo "$((runs - fails))/$runs passed"
 [ "$fails" -eq 0 ]

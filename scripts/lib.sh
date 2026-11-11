@@ -104,6 +104,28 @@ set_fields() {
       --input - --silent
 }
 
+# The level of an issue in the tree: 1 for a root, 2 for its child,
+# and so on, read from its real chain of parents.
+issue_level() {
+  local url level=1 n=0
+  url=$(gh api "repos/$1/issues/$2" --jq '.parent_issue_url // empty')
+  while [ -n "$url" ] && [ "$n" -lt 10 ]; do
+    case "$url" in
+      https://api.github.com/repos/*) ;;
+      *) die "unexpected parent URL: $url" ;;
+    esac
+    level=$((level + 1)); n=$((n + 1))
+    url=$(gh api "${url#https://api.github.com/}" \
+      --jq '.parent_issue_url // empty')
+  done
+  printf '%s\n' "$level"
+}
+
+# True when the body has a "Done when" heading.
+has_done_when() {
+  printf '%s\n' "$1" | grep -qiE '^#{1,6}[[:space:]]+done when'
+}
+
 # The number of an open milestone, by title, in a repository.
 milestone_number() {
   local n

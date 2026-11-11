@@ -20,9 +20,11 @@ scripts/move-milestone.sh --to "After launch" 77
 scripts/file-tree.sh --dry-run 526 tree.json
 ```
 
-`file-tree.sh` checks every value and the depth before it creates
-anything, and refuses a fourth level unless given `--allow-deep`. Its
-input format is in the script's header.
+`file-tree.sh` checks every value, milestone and label, and the depth,
+before it creates anything, so a bad tree files nothing. It reads the
+parent's real level from its chain of parents and refuses a fourth
+level unless given `--allow-deep`. Its input format is in the script's
+header.
 
 `tests/run.sh` runs the helpers against a stub `gh` that replays
 responses recorded from the real API (`tests/fixtures/`, 2026-11-11).

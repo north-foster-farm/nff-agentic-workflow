@@ -14,9 +14,12 @@
 #     "labels": ["needs: qa"], "milestone": "Next release",
 #     "children": [ ...nodes... ] }
 #
-# The parent sits at level N (default 1, a release issue). The tree may
-# reach three levels; a deeper one needs the owner's approval, then
-# --allow-deep. Every value is checked before anything is created.
+# The parent's real level comes from its chain of parents (a release
+# issue is level 1). --parent-level N says the parent is at least level
+# N, for a tree whose upper levels aren't linked yet. The tree may reach
+# three levels; a deeper one needs the owner's approval, then
+# --allow-deep. Every value, milestone and label is checked before
+# anything is created.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
@@ -26,7 +29,7 @@ while [ $# -gt 0 ]; do
     --dry-run) dry=1; shift ;;
     --allow-deep) deep=1; shift ;;
     --parent-level) level="${2:?--parent-level needs a number}"; shift 2 ;;
-    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     -*) die "unknown option: $1" ;;
     *) pos+=("$1"); shift ;;
   esac
@@ -42,6 +45,11 @@ jq -e 'def ok: (.title | type) == "string" and (.title | length) > 0
   die "every node needs a non-empty title"
 
 # Checks first, so a bad tree files nothing.
+resolve_ref "${pos[0]}"
+parent_repo=$REF_REPO
+parent_num=$REF_NUM
+actual=$(issue_level "$parent_repo" "$parent_num")
+[ "$actual" -le "$level" ] || level=$actual
 depth=$(jq 'def d: 1 + ([.children[]? | d] | max // 0);
   [.[] | d] | max' "$tree")
 if [ $((level + depth)) -gt "$MAX_DEPTH" ] && [ "$deep" = 0 ]; then
@@ -62,9 +70,31 @@ check_all Owner "$OWNER_VALUES" owner
 check_all Kind "$KIND_VALUES" kind
 check_all Type "$TYPE_VALUES" type
 
-resolve_ref "${pos[0]}"
-parent_repo=$REF_REPO
-parent_num=$REF_NUM
+
+# Every milestone and label named must exist in the repository its issue
+# goes to (a node's repo, else its parent's), so a missing one can't
+# leave a partial tree.
+needed=$(jq -r --arg r "$parent_repo" '
+  def w($r): (.repo // $r) as $r
+    | ((.milestone // empty) | "\($r)\tm\t\(.)"),
+      ((.labels[]?) | "\($r)\tl\t\(.)"),
+      (.children[]? | w($r));
+  .[] | w($r)' "$tree" | sort -u)
+cur_repo="" cur_labels=""
+while IFS=$'\t' read -r nrepo nkind nname; do
+  [ -n "$nrepo" ] || continue
+  if [ "$nkind" = m ]; then
+    milestone_number "$nrepo" "$nname" >/dev/null
+  else
+    if [ "$nrepo" != "$cur_repo" ]; then
+      cur_repo=$nrepo
+      cur_labels=$(gh api --paginate "repos/$nrepo/labels?per_page=100" |
+        jq -r '.[].name')
+    fi
+    in_list "$cur_labels" "$nname" ||
+      die "no label '$nname' in $nrepo (sync-labels.sh adds shared ones)"
+  fi
+done <<< "$needed"
 
 # file_node <node-json> <parent repo> <parent number> <level>
 file_node() {
@@ -89,7 +119,7 @@ file_node() {
   pad=$(printf '%*s' $(((lvl - 1) * 2)) '')
 
   if [ "$nkids" -eq 0 ] && [ "$type" = Task ] &&
-    ! printf '%s' "$body" | grep -qi 'done when'; then
+    ! has_done_when "$body"; then
     echo "warning: '$title' has no \"Done when\" section" >&2
   fi
 

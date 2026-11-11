@@ -152,15 +152,10 @@ busy.
 
 ## Confirming a staging deploy (2026-10-24)
 
-Staging sits behind the access gate: a bare `curl` of a page gets 401,
-so never wait on `data-build`. One path is open to anyone (#332):
-
-    curl -s https://<staging host>/version.json
-
-It answers `{"commit":"<sha>","version":"<x.y.z>"}`. After
-fast-forwarding `staging`, poll until `commit` equals the pushed SHA
-(`git rev-parse origin/staging`). Production serves the same file. It
-works once #332 has landed and deployed; until then, report the push
+Staging sits behind an access gate, so never wait on `data-build`.
+After fast-forwarding `staging`, poll the site's version file on the
+staging host until its `commit` equals the pushed SHA
+(`git rev-parse origin/staging`). If it can't be read, report the push
 and ask James to glance at the staging toolbar commit.
 
 ## Cloud agents (2026-10-24)

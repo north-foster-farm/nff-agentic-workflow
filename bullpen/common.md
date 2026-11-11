@@ -287,11 +287,9 @@ inside ~/Code/nff and the tool caches; talk only to the services the
 project uses. If the permission classifier refuses a command, stop
 and tell the coordinator; never look for a way around it.
 
-To see whether staging has a change, fetch the site's
-`/version.json` on the staging host and compare its `commit` with the
-pushed SHA. It is the one path the staging gate leaves open (#332);
-every page answers a bare request with 401, and GitHub shows no
-Netlify status for staging pushes.
+To see whether staging has a change, compare the commit the staging
+host reports (the site's version file) with the pushed SHA. GitHub
+shows no Netlify status for staging pushes.
 
 ## Things that bite
 
@@ -305,9 +303,9 @@ Netlify status for staging pushes.
   the verdict: the pipe returns the last command's status, so a
   failed build looks green. Run it bare, or check `${PIPESTATUS[0]}`.
 
-- `/api/orders` allows 12 posts per 10 minutes per IP and `/api/contact`
-  5, shared by every agent and the QA suite on this machine. Don't send
-  test orders or messages you don't need; announce a lockout test.
+- The order and contact endpoints are rate limited per IP, shared by
+  every agent and the QA suite on this machine. Don't send test orders
+  or messages you don't need; announce a lockout test.
 - To check your branch's e2e in Actions, run only your own specs:
   `gh workflow run e2e.yml --ref lane/<you> -f specs="e2e/foo.spec.mjs
   e2e/bar.spec.mjs"` (paths under `e2e/` only; one shard, one pass, no

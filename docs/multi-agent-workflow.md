@@ -128,9 +128,9 @@ by the runbook.
 - **A dozen agents asking at once:** the liaison.
 - **Resume files colliding at a shared repo root:** every agent's is in
   its own `.ignored/`.
-- **One rate limit for everyone:** `/api/orders` allows 12 posts per 10
-  minutes per IP and `/api/contact` 5, shared by every agent on the
-  machine; lockout tests are announced first.
+- **One rate limit for everyone:** the order and contact endpoints are
+  limited per IP, shared by every agent on the machine; lockout tests
+  are announced first.
 - **Unattended runs:** before James sleeps, busy agents finish their
   item, land it, save, and stop. Never kill a session that says it's
   busy.

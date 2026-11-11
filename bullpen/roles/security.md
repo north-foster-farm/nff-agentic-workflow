@@ -29,7 +29,8 @@ implementer's code.
 
 A finding that exposes a live weakness or credential never goes in an
 issue, comment, commit, log or CI output. Write it to
-~/Code/nff/incidents/ and tell the coordinator only that there is one
+the workspace's private incidents folder (outside this repository)
+and tell the coordinator only that there is one
 and how severe it is. A leaked credential is rotated by James (revoke
 at once, no overlap); record the steps for him there.
 

@@ -105,7 +105,7 @@ folder_for() {
   local role="$1" kind="$2"
 
   case "$kind" in
-    path=*) eval "echo ${kind#path=}" ;;
+    path=*) local p="${kind#path=}"; echo "${p/#\~/$HOME}" ;;
     *) echo "$lanes/$role" ;;
   esac
 }
@@ -151,6 +151,14 @@ prepare() {
 # then a shell, so the pane stays open when the agent exits.
 command_for() {
   local role="$1" kind="$2" dir="$3" flags="$4" prompt
+  local -a fargs=()
+
+  # sandbox.json and shims/ are private to each machine and required:
+  # they hold the permission settings and the browser guard.
+  [ -f "$pen/sandbox.json" ] ||
+    die "missing $pen/sandbox.json (private, required; see README)"
+  [ -d "$pen/shims" ] ||
+    die "missing $pen/shims (private, required; see README)"
 
   if [ -f "$dir/.ignored/resume.md" ]; then
     # The resume says where the lane stopped; answers.md often holds
@@ -178,10 +186,11 @@ and is your work now, ahead of the brief's own."
   # The coordinator's notes and memory are its own. A role with its own
   # deny list names them there instead, since a second
   # --disallowedTools could replace the first.
-  if [[ "$flags" != *--disallowedTools* ]]; then
-    flags="$flags --disallowedTools"
-    flags="$flags \"Read(~/Code/nff/.ignored/**)\""
-    flags="$flags \"Read(~/.claude/projects/-Users-james-Code-nff/memory/**)\""
+  # Each flag is quoted with %q below, so none is re-read by the shell.
+  read -ra fargs <<< "$flags" || true
+  if [[ " ${fargs[*]-} " != *" --disallowedTools "* ]]; then
+    fargs+=(--disallowedTools "Read(~/Code/nff/.ignored/**)"
+      "Read(~/.claude/projects/-Users-james-Code-nff/memory/**)")
   fi
 
   # The prompt goes before the flags: --disallowedTools takes every
@@ -194,8 +203,10 @@ and is your work now, ahead of the brief's own."
   local shim="$pen/shims"
   printf 'export PATH=%q:"$PATH" BROWSER=%q GH_BROWSER=%q; ' \
     "$shim" "$shim/open" "$shim/open"
-  printf '%s%s -n %q %q --settings %q %s; exec "$SHELL"' \
-    "$deps" "$claude_bin" "$role" "$prompt" "$pen/sandbox.json" "$flags"
+  printf '%s%s -n %q %q --settings %q' \
+    "$deps" "$claude_bin" "$role" "$prompt" "$pen/sandbox.json"
+  printf ' %q' "${fargs[@]}"
+  printf '; exec "$SHELL"'
 }
 
 # The bullpen's session, by id: a "." in a tmux target means a pane, so
@@ -432,6 +443,8 @@ settle() {
       *" $color "*)
         apply_color "$pane" "$color" ;;
     esac
+    # Opt out with BULLPEN_REMOTE_CONTROL=0 (documented in the README).
+    [ "${BULLPEN_REMOTE_CONTROL:-1}" = 0 ] && continue
     tmux send-keys -t "$pane" -l '/remote-control'
     tmux send-keys -t "$pane" Enter
     # /remote-control leaves a panel open (its info, or a menu whose
@@ -522,8 +535,17 @@ sync_color() {
   [ -z "$n" ] || tmux set -p -t "$pane" @agent_color "colour$n"
 }
 
+# The color names /color takes; anything else never reaches a pane.
+valid_color() {
+  case "$1" in
+    red|orange|yellow|green|cyan|blue|purple|pink) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # Sends /color to an idle agent, then matches its label to the result.
 apply_color() {
+  valid_color "$2" || die "bad color: $2"
   tmux send-keys -t "$1" -l "/color $2"
   tmux send-keys -t "$1" Enter
   sleep 3
@@ -763,6 +785,8 @@ case "$action" in
     done
     ;;
   colorwait)
+    case "$1" in %[0-9]*) ;; *) die "bad pane: $1" ;; esac
+    valid_color "$2" || die "bad color: $2"
     # Waits (up to 30 minutes) for an agent to go idle, then sets its
     # prompt bar's color.
     for _ in $(seq 1 360); do

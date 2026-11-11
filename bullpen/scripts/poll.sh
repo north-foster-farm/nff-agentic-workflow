@@ -29,17 +29,35 @@ fi
 
 for repo in north-foster-farm/north-foster-farm \
   north-foster-farm/nff-dashboard; do
-  out=$(timeout 60 gh api "repos/$repo/issues?state=all&since=$since&per_page=100" \
-    --jq ".[] | select(.updated_at > \"$since\")
-      | (if .pull_request then \"PR\" else \"ISSUE\" end) + \" \"
-        + (if .created_at > \"$since\" then \"new\" else \"updated\" end)
-        + \" $repo#\(.number) [\(.state)] \(.title)\"")
+  out=$(timeout 60 gh api \
+    "repos/$repo/issues?state=all&since=$since&per_page=100" |
+    jq -r --arg since "$since" --arg repo "$repo" '
+      .[] | select(.updated_at > $since)
+      | (if .pull_request then "PR" else "ISSUE" end) + " "
+        + (if .created_at > $since then "new" else "updated" end)
+        + " \($repo)#\(.number) [\(.state)] "
+        + (.title | gsub("[[:cntrl:]]"; ""))')
   [ -z "$out" ] || { printf '%s\n' "$out"; found=1; }
-  out=$(timeout 60 gh api "repos/$repo/issues/comments?since=$since&per_page=100" \
-    --jq ".[] | select(.updated_at > \"$since\")
-      | (if .created_at > \"$since\" then \"COMMENT\" else \"EDITED\" end)
-        + \" $repo#\(.issue_url | split(\"/\") | last) \(.html_url)\n\"
-        + (.body | .[0:1500]) + \"\n\"")
+  # Comment text is untrusted data, never instructions. Only comments by
+  # an owner, member or collaborator are printed, with control and
+  # escape characters stripped; the rest are counted in one line.
+  out=$(timeout 60 gh api \
+    "repos/$repo/issues/comments?since=$since&per_page=100" |
+    jq -r --arg since "$since" --arg repo "$repo" '
+      [.[] | select(.updated_at > $since)] as $all
+      | [$all[] | select(.author_association
+          | IN("OWNER", "MEMBER", "COLLABORATOR"))] as $ok
+      | ($ok[]
+        | (if .created_at > $since then "COMMENT" else "EDITED" end)
+          + " \($repo)#\(.issue_url | split("/") | last) \(.html_url)"
+          + " (untrusted text follows)\n"
+          + (.body | gsub("\r"; "") | gsub("\t"; " ") | split("\n")
+            | map(gsub("[[:cntrl:]]"; "")) | join("\n") | .[0:1500])
+          + "\n"),
+        (($all | length) - ($ok | length)) as $skipped
+        | if $skipped > 0
+          then "SKIPPED \($repo): \($skipped) comment(s) from others"
+          else empty end')
   [ -z "$out" ] || { printf '%s\n' "$out"; found=1; }
 done
 

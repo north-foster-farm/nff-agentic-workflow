@@ -13,6 +13,9 @@ issue is a number (in `$NFF_REPO`, else the current repository),
 | `sync-labels.sh` | Makes the shared labels (`../labels.json`) exist |
 | `plan-check.sh` | The checks behind the plan-check workflow |
 
+A hard-block reminder on a blocker in another repository is skipped
+unless the token in use can write there (`docs/plan-check.md`).
+
 ```
 scripts/set-field.sh --stage "in review" --owner james 540 541
 scripts/set-field.sh --kind credential --owner james org/repo#12

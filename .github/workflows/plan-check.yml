@@ -5,9 +5,10 @@ name: plan-check
 #
 #   jobs:
 #     plan-check:
-#       uses: north-foster-farm/nff-agentic-workflow/.github/workflows/plan-check.yml@main
+#       uses: north-foster-farm/nff-agentic-workflow/.github/workflows/plan-check.yml@<commit sha>
 #       with:
 #         mode: issue            # or hard-blocks, from a schedule
+#         ref: <the same commit SHA>
 #       permissions:
 #         contents: read
 #         issues: write
@@ -26,14 +27,19 @@ on:
         type: string
         default: ""
       ref:
-        description: "The ref of nff-agentic-workflow whose scripts run"
+        description: >-
+          The commit SHA of nff-agentic-workflow whose scripts run; use
+          the same SHA as in the caller's uses line
         type: string
-        default: main
+        required: true
 
 permissions: {}
 
 jobs:
   check:
+    concurrency:
+      group: plan-check-${{ github.repository }}-${{ inputs.mode }}-${{ inputs.issue-number || github.event.issue.number || 'sweep' }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -57,7 +63,9 @@ jobs:
         run: |
           case "$MODE" in
             issue)
-              [ -n "$ISSUE" ] || { echo "no issue to check"; exit 1; }
+              case "$ISSUE" in
+                ''|*[!0-9]*) echo "bad issue number"; exit 1 ;;
+              esac
               .plan-check/scripts/plan-check.sh issue "$ISSUE" ;;
             hard-blocks)
               .plan-check/scripts/plan-check.sh hard-blocks ;;

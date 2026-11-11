@@ -14,11 +14,18 @@
 #   for $HARD_BLOCK_HOURS (default 24), it gets a reminder comment, so
 #   the reminder repeats once per silent day.
 #
+# Only the check's own comments (by PLAN_CHECK_BOT, default
+# github-actions[bot]) count as "already reported", and only comments by
+# that bot or an owner, member or collaborator count toward the
+# hard-block timer, so a stranger can neither silence the check nor
+# reset the clock.
+#
 # GH_TOKEN must be set. PLAN_CHECK_DRY=1 prints instead of commenting.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
 HARD_BLOCK_HOURS="${HARD_BLOCK_HOURS:-24}"
+BOT="${PLAN_CHECK_BOT:-github-actions[bot]}"
 MARK_ISSUE='<!-- plan-check:issue -->'
 MARK_HARD='<!-- plan-check:hard-block -->'
 
@@ -39,16 +46,16 @@ field() {
       | .single_select_option.name] | first // empty'
 }
 
-# The comment bodies of an issue, all pages.
+# The bodies of the bot's own comments on an issue, all pages.
 comment_bodies() {
   gh api --paginate "repos/$1/issues/$2/comments?per_page=100" |
-    jq -r '.[].body'
+    jq -r --arg bot "$BOT" '.[] | select(.user.login == $bot) | .body'
 }
 
 check_issue() {
   resolve_ref "$1"
-  local repo=$REF_REPO num=$REF_NUM issue state body problems="" level=1
-  local parent seen=0 stage owner approved
+  local repo=$REF_REPO num=$REF_NUM issue state body problems="" level
+  local stage owner approved
 
   issue=$(gh api "repos/$repo/issues/$num")
   if [ "$(printf '%s' "$issue" | jq -r '.pull_request != null')" = true ]; then
@@ -64,18 +71,13 @@ check_issue() {
   [ -n "$owner" ] || problems="$problems- It has no Owner.
 "
   body=$(printf '%s' "$issue" | jq -r '.body // ""')
-  printf '%s' "$body" | grep -qi 'done when' ||
+  has_done_when "$body" ||
     problems="$problems- Its body has no \"Done when\" section.
 "
 
   approved=$(printf '%s' "$issue" |
     jq -r '[.labels[]?.name] | index("depth: approved") != null')
-  parent=$(printf '%s' "$issue" | jq -r '.parent_issue_url // empty')
-  while [ -n "$parent" ] && [ "$seen" -lt 10 ]; do
-    level=$((level + 1)); seen=$((seen + 1))
-    parent=$(gh api "${parent#https://api.github.com/}" |
-      jq -r '.parent_issue_url // empty')
-  done
+  level=$(issue_level "$repo" "$num")
   if [ "$level" -gt "$MAX_DEPTH" ] && [ "$approved" != true ]; then
     problems="$problems- It sits at level $level; $MAX_DEPTH are allowed \
 without the owner's approval. Once approved, add the label \
@@ -112,7 +114,10 @@ check_hard_blocks() {
       brepo=${b%%#*}; bnum=${b##*#}
       [ "$(field "$brepo" "$bnum" Owner)" = james ] || continue
       last=$(gh api "repos/$brepo/issues/$bnum/comments?per_page=100" |
-        jq -r '[.[].created_at] | max // empty')
+        jq -r --arg bot "$BOT" '[.[] | select(.user.login == $bot
+          or (.author_association
+            | IN("OWNER", "MEMBER", "COLLABORATOR")))
+          | .created_at] | max // empty')
       [ -n "$last" ] ||
         last=$(gh api "repos/$brepo/issues/$bnum" --jq .created_at)
       age=$(jq -n --arg t "$last" '(now - ($t | fromdateiso8601)) / 3600

@@ -171,9 +171,12 @@ has "$out" 'level 4' 'depth beyond three reported'
 has "$out" '<!-- plan-check:issue -->' 'comment carries its marker'
 out=$(check issue $pr#10)
 has "$out" '#10: ok' 'a complete issue passes'
-out=$(check issue $pr#5)
+# The recorded marker comment on #5 was posted by jbboynton.
+out=$(PLAN_CHECK_BOT=jbboynton check issue $pr#5)
 has "$out" 'already reported' 'the check comments once'
 lacks "$out" 'WOULD COMMENT' 'no second comment'
+out=$(check issue $pr#5)
+has "$out" 'WOULD COMMENT' 'a marker from anyone but the bot is ignored'
 out=$(check issue $pr#4)
 has "$out" 'closed; skipped' 'a closed issue is skipped'
 

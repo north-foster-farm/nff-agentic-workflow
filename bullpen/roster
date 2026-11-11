@@ -1,0 +1,39 @@
+# The bullpen's roster: every role the coordinator may open, one per
+# line. Nothing opens by default; the coordinator opens a role when
+# GitHub hands it work and closes it when the work lands.
+#
+# Every lane runs on Sonnet at low effort ("very lean", 2026-10-28).
+#
+#   role  class  kind  color  [claude flags...]
+#
+# class: impl     an implementer (at most 3 live, BULLPEN_IMPL_CAP)
+#        review   a reviewer or checker (at most 2 live,
+#                 BULLPEN_REVIEW_CAP)
+#        liaison  opened only when the owner works in the terminal and
+#                 several agents have questions for them
+# kind:  site  a worktree of the site repository at
+#              ~/Code/nff/lanes/<role>, on branch lane/<role> cut from
+#              origin/staging, npm ci'd
+#        desk  a plain folder at ~/Code/nff/lanes/<role> (no git)
+#        path=<folder>  an existing folder (a clone or worktree made by
+#              hand, as for the dashboard and this repository)
+# color: one of /color's names (red orange yellow green cyan blue purple
+#        pink), for the pane's title and its prompt bar alike.
+# flags: passed to claude as is.
+# A role starts from its brief (roles/<role>.md), or, when its folder
+# has .ignored/resume.md, from that.
+#
+# One-off implementer roles (one per piece of work) are added here when
+# the coordinator hires them and removed when their work lands. Write
+# each brief from scratch for the new work.
+
+liaison         liaison  desk   cyan    --model claude-sonnet-5-5 --effort low
+project-manager liaison  desk   orange  --model claude-sonnet-5-5 --effort low
+
+# Reviewers.
+qa              review   path=~/Code/nff/lanes/qa  pink  --model claude-sonnet-5-5 --effort low
+security        review   site   cyan    --model claude-sonnet-5-5 --effort low
+communications  review   site   purple  --model claude-sonnet-5-5 --effort low
+
+# The shared process repo, north-foster-farm/nff-agentic-workflow.
+workflow        impl     path=~/Code/nff/lanes/workflow  purple  --model claude-sonnet-5-5 --effort low

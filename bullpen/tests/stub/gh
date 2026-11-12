@@ -3,11 +3,13 @@
 # from the real API (../fixtures/, recorded 2026-11-11 from the
 # nff-agentic-workflow repository), found by the request path with /
 # turned into _ and the query dropped. Every call is logged to
-# $STUB_LOG.
+# $STUB_LOG. STUB_REPO_LIST names a file to serve for gh repo list.
 fx="$(cd "$(dirname "$0")/../fixtures" && pwd)"
 printf 'gh %s\n' "$*" >> "$STUB_LOG"
 jq_filter=""
 file=""
+[ "${1:-} ${2:-}" != "repo list" ] ||
+  file="${STUB_REPO_LIST:-$fx/repo-list.json}"
 args=("$@")
 for ((i = 0; i < ${#args[@]}; i++)); do
   case "${args[$i]}" in
@@ -18,5 +20,11 @@ for ((i = 0; i < ${#args[@]}; i++)); do
       ;;
   esac
 done
+if [ -n "$file" ] && [ ! -f "$file" ]; then
+  case "$file" in # a repo with nothing recorded has nothing listed
+    *_issues.json|*_issues_comments.json|*_pulls_comments.json)
+      echo "[]"; exit 0 ;;
+  esac
+fi
 [ -n "$file" ] && [ -f "$file" ] || { echo "no fixture for: $*" >&2; exit 1; }
 if [ -n "$jq_filter" ]; then jq -r "$jq_filter" "$file"; else cat "$file"; fi

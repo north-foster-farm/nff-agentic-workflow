@@ -1,1 +1,180 @@
-[{"created_at":"2026-11-11T17:09:25Z","issue_dependencies_summary":{"blocked_by":0,"blocking":1,"total_blocked_by":0,"total_blocking":1},"labels":[],"number":15,"pull_request":null,"title":"scratch: owned blocker","updated_at":"2026-11-11T17:09:34Z"},{"created_at":"2026-11-11T17:09:24Z","issue_dependencies_summary":{"blocked_by":1,"blocking":0,"total_blocked_by":1,"total_blocking":0},"labels":[{"name":"lane: scratch"}],"number":14,"pull_request":null,"title":"scratch: lane issue","updated_at":"2026-11-11T17:18:19Z"},{"created_at":"2026-11-11T17:08:07Z","issue_dependencies_summary":null,"labels":[],"number":13,"pull_request":{"diff_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/13.diff","html_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/13","merged_at":null,"patch_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/13.patch","url":"https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/13"},"title":"Add the plan-check workflow and shared labels","updated_at":"2026-11-11T17:17:24Z"},{"created_at":"2026-11-11T17:03:35Z","issue_dependencies_summary":null,"labels":[],"number":11,"pull_request":{"diff_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/11.diff","html_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/11","merged_at":null,"patch_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/11.patch","url":"https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/11"},"title":"Add the planning helpers","updated_at":"2026-11-11T17:17:23Z"},{"created_at":"2026-11-11T16:58:59Z","issue_dependencies_summary":null,"labels":[],"number":3,"pull_request":{"diff_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/3.diff","html_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/3","merged_at":null,"patch_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/3.patch","url":"https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/3"},"title":"Add the bullpen and its docs","updated_at":"2026-11-11T17:17:26Z"},{"created_at":"2026-11-11T16:56:32Z","issue_dependencies_summary":null,"labels":[],"number":2,"pull_request":{"diff_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/2.diff","html_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/2","merged_at":null,"patch_url":"https://github.com/north-foster-farm/nff-agentic-workflow/pull/2.patch","url":"https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/2"},"title":"Add the planning rules","updated_at":"2026-11-11T17:08:20Z"},{"created_at":"2026-11-11T10:32:59Z","issue_dependencies_summary":{"blocked_by":0,"blocking":0,"total_blocked_by":0,"total_blocking":0},"labels":[],"number":1,"pull_request":null,"title":"Wire the #527 planning rules into the bullpen","updated_at":"2026-11-11T17:08:26Z"}]
+[
+  {
+    "created_at": "2026-11-11T17:09:25Z",
+    "issue_dependencies_summary": {
+      "blocked_by": 0,
+      "blocking": 1,
+      "total_blocked_by": 0,
+      "total_blocking": 1
+    },
+    "labels": [],
+    "number": 15,
+    "pull_request": null,
+    "title": "scratch: owned blocker",
+    "updated_at": "2026-11-11T17:09:34Z"
+  },
+  {
+    "created_at": "2026-11-11T17:09:24Z",
+    "issue_dependencies_summary": {
+      "blocked_by": 1,
+      "blocking": 0,
+      "total_blocked_by": 1,
+      "total_blocking": 0
+    },
+    "labels": [
+      {
+        "name": "lane: scratch"
+      }
+    ],
+    "number": 14,
+    "pull_request": null,
+    "title": "scratch: lane issue",
+    "updated_at": "2026-11-11T17:18:19Z"
+  },
+  {
+    "created_at": "2026-11-11T17:08:07Z",
+    "issue_dependencies_summary": null,
+    "labels": [],
+    "number": 13,
+    "pull_request": {
+      "diff_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/13.diff",
+      "html_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/13",
+      "merged_at": null,
+      "patch_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/13.patch",
+      "url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/13"
+    },
+    "title": "Add the plan-check workflow and shared labels",
+    "updated_at": "2026-11-11T17:17:24Z"
+  },
+  {
+    "created_at": "2026-11-11T17:03:35Z",
+    "issue_dependencies_summary": null,
+    "labels": [],
+    "number": 11,
+    "pull_request": {
+      "diff_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/11.diff",
+      "html_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/11",
+      "merged_at": null,
+      "patch_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/11.patch",
+      "url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/11"
+    },
+    "title": "Add the planning helpers",
+    "updated_at": "2026-11-11T17:17:23Z"
+  },
+  {
+    "created_at": "2026-11-11T16:58:59Z",
+    "issue_dependencies_summary": null,
+    "labels": [],
+    "number": 3,
+    "pull_request": {
+      "diff_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/3.diff",
+      "html_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/3",
+      "merged_at": null,
+      "patch_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/3.patch",
+      "url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/3"
+    },
+    "title": "Add the bullpen and its docs",
+    "updated_at": "2026-11-11T17:17:26Z"
+  },
+  {
+    "created_at": "2026-11-11T16:56:32Z",
+    "issue_dependencies_summary": null,
+    "labels": [],
+    "number": 2,
+    "pull_request": {
+      "diff_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/2.diff",
+      "html_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/2",
+      "merged_at": null,
+      "patch_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/2.patch",
+      "url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/2"
+    },
+    "title": "Add the planning rules",
+    "updated_at": "2026-11-11T17:08:20Z"
+  },
+  {
+    "created_at": "2026-11-11T10:32:59Z",
+    "issue_dependencies_summary": {
+      "blocked_by": 0,
+      "blocking": 0,
+      "total_blocked_by": 0,
+      "total_blocking": 0
+    },
+    "labels": [],
+    "number": 1,
+    "pull_request": null,
+    "title": "Wire the #527 planning rules into the bullpen",
+    "updated_at": "2026-11-11T17:08:26Z"
+  },
+  {
+    "url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/issues/19",
+    "repository_url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow",
+    "labels_url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/issues/19/labels{/name}",
+    "comments_url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/issues/19/comments",
+    "events_url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/issues/19/events",
+    "html_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/19",
+    "id": 6339385732,
+    "node_id": "PR_kwDOVqeeAM8AAAABOgi4yg",
+    "number": 19,
+    "title": "scratch: poll test PR",
+    "user": {
+      "login": "jbboynton",
+      "id": 16706305,
+      "node_id": "MDQ6VXNlcjE2NzA2MzA1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/16706305?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/jbboynton",
+      "html_url": "https://github.com/jbboynton",
+      "followers_url": "https://api.github.com/users/jbboynton/followers",
+      "following_url": "https://api.github.com/users/jbboynton/following{/other_user}",
+      "gists_url": "https://api.github.com/users/jbboynton/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/jbboynton/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/jbboynton/subscriptions",
+      "organizations_url": "https://api.github.com/users/jbboynton/orgs",
+      "repos_url": "https://api.github.com/users/jbboynton/repos",
+      "events_url": "https://api.github.com/users/jbboynton/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/jbboynton/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "labels": [],
+    "state": "open",
+    "locked": false,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-11-11T23:51:07Z",
+    "updated_at": "2026-11-11T23:51:21Z",
+    "closed_at": null,
+    "assignee": null,
+    "author_association": "MEMBER",
+    "issue_field_values": [],
+    "type": null,
+    "active_lock_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/pulls/19",
+      "html_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/19",
+      "diff_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/19.diff",
+      "patch_url": "https://github.com/north-foster-farm/nff-agentic-workflow/pull/19.patch",
+      "merged_at": null
+    },
+    "body": "Scratch PR for #17 tests; closed after.",
+    "closed_by": null,
+    "reactions": {
+      "url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/issues/19/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    },
+    "timeline_url": "https://api.github.com/repos/north-foster-farm/nff-agentic-workflow/issues/19/timeline",
+    "performed_via_github_app": null,
+    "state_reason": null
+  }
+]

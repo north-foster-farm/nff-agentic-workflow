@@ -13,15 +13,16 @@ yourself.
 
 ## Poll GitHub
 
-From the moment `/bullpen` runs until you stop, poll both repos:
+From the moment `/bullpen` runs until you stop, poll the whole org:
 
 ```
 ~/.claude/skills/bullpen/scripts/poll.sh
 ```
 
-It prints every issue, PR and comment new or edited since its last
-run, then `CADENCE 5m`, `1h` or `1d`: 5 minutes while there is
-activity, hourly after 2 quiet hours, daily after 2 more. Keep exactly
+It prints every repo (REPO on a new one), issue, PR, comment, line
+comment, review and alert new or edited since its last run, each with
+its full timestamp, then `CADENCE 5m`, `1h` or `1d`: 5 minutes while
+there is activity, hourly after 2 quiet hours, daily after 2 more. Keep exactly
 one poll cron (CronCreate) at that cadence; when the line changes,
 delete the cron and create one at the new cadence. Any activity drops
 it back to 5 minutes. **Never run `poll.sh --mark`** (2026-10-23):
@@ -46,6 +47,25 @@ item:
   comment from an owner, member or collaborator for 24 hours. Chase it
   as the planning rules say; it prints on every poll while it holds.
 - `PLAN ...`: the plan lines failed; read the message.
+
+**Audit log on GitHub (James, 2026-11-11), binding.** Every poll that
+finds something, and every action you take (dispatch, review, land,
+restore, defer, ask, decide, or just "seen, will address in sequence"),
+is written to GitHub as it happens: one comment per poll or event on
+the Coordinator log, north-foster-farm/nff-agentic-workflow#18, saying
+what was found (links), what you did and why; plus a short note on the
+affected issue when nothing else there shows the action. Only a quiet
+poll (nothing found, nothing done) goes unlogged. Private matters
+appear only as "private item, details with James". The voice and text
+agents follow the pipeline from this log.
+
+Post each entry with `~/.claude/skills/bullpen/scripts/coord-log.sh
+"<text>" [--issue repo#N "<note>"]`. It writes the entry to #18 and,
+with `--issue`, a short note on the affected issue, and refuses (posting
+nothing) when the text looks like an email address, a phone number or a
+token. The poll cron's prompt names the log: run `poll.sh`, and when
+it prints anything but PANE lines for idle or busy agents, log the poll
+and what you did with `coord-log.sh`.
 
 ## Work the queue
 

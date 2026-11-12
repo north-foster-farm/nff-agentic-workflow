@@ -43,9 +43,9 @@ printf '%s\t%s\t%s\n' "$repo#14" "spec" "2000-01-01T00:00:00Z" \
   > "$BULLPEN_STATE/stages"
 : > "$BULLPEN_STATE/blocks"
 out=$(HARD_BLOCK_HOURS=100000 "$script")
-has "$out" "STAGE $repo#14 spec>ready | scratch: lane issue" \
+has "$out" "STAGE $repo#14 spec>ready | \"scratch: lane issue\"" \
   'a changed Stage is reported'
-has "$out" "BLOCK $repo#14 <- $repo#15 | scratch: lane issue" \
+has "$out" "BLOCK $repo#14 <- $repo#15 | \"scratch: lane issue\"" \
   'a new blocked-by link is reported'
 
 # A stage with a space survives the snapshot.
@@ -60,6 +60,47 @@ has "$out" "HARD $repo#15 owner james," 'a hard block is listed'
 has "$out" "blocks $repo#14 (ready)" 'it names the waiting work'
 out=$(HARD_BLOCK_HOURS=100000 "$script")
 lacks "$out" 'HARD' 'a recent hard block is not listed'
+
+# A private copy of the stub and fixtures to edit.
+priv=$(mktemp -d)
+trap 'rm -rf "$priv"; rm -f "$STUB_LOG"' EXIT
+mkdir -p "$priv/stub" "$priv/fixtures"
+cp "$here/stub/gh" "$priv/stub/gh"
+cp "$here/fixtures"/* "$priv/fixtures/"
+pre=repos_north-foster-farm_nff-agentic-workflow
+
+# Titles are cleaned like poll.sh's: control, tag, format and separator
+# characters go, and the title is quoted.
+jq 'map(if .number == 14
+  then .title = "a\u001b[0m👋󠁁b﻿c d⁠e"
+  else . end)' "$here/fixtures/${pre}_issues.json" \
+  > "$priv/fixtures/${pre}_issues.json"
+fresh
+printf '%s\t%s\t%s\n' "$repo#14" "spec" "2000-01-01T00:00:00Z" \
+  > "$BULLPEN_STATE/stages"
+out=$(PATH="$priv/stub:$PATH" HARD_BLOCK_HOURS=100000 "$script")
+has "$out" "STAGE $repo#14 spec>ready | \"a[0m" 'control characters go'
+runs=$((runs + 1))
+case "$out" in
+  *$'\033'*|*$'\xef\xbb\xbf'*|*$'\xe2\x80\xa8'*|*$'\xe2\x81\xa0'*|*$'\xf3\xa0'*)
+  fails=$((fails + 1)); echo "FAIL: format characters survive" ;; esac
+has "$out" "\"a[0m" 'the title is quoted'
+has "$out" "bcde\"" 'the rest of the title is kept'
+
+# A failed read stops the poll and leaves the snapshot as it was.
+cp "$here/fixtures/${pre}_issues.json" "$priv/fixtures/${pre}_issues.json"
+rm "$priv/fixtures/${pre}_issues_14_issue-field-values.json"
+fresh
+printf '%s\t%s\t%s\n' "$repo#14" "spec" "2000-01-01T00:00:00Z" \
+  > "$BULLPEN_STATE/stages"
+before=$(cat "$BULLPEN_STATE/stages")
+PATH="$priv/stub:$PATH" HARD_BLOCK_HOURS=100000 "$script" \
+  >/dev/null 2>&1; rc=$?
+runs=$((runs + 1))
+[ "$rc" != 0 ] || { fails=$((fails + 1)); echo "FAIL: failed read exits 0"; }
+runs=$((runs + 1))
+[ "$(cat "$BULLPEN_STATE/stages")" = "$before" ] ||
+  { fails=$((fails + 1)); echo "FAIL: a failed read rewrote the state"; }
 
 # Read-only: no call other than a GET.
 if grep -qE ' (-X|--method) ' "$STUB_LOG"; then

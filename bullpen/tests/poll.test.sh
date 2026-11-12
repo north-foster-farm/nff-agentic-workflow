@@ -90,6 +90,23 @@ lacks "$out" "scratch conversation comment" 'outside comment text is withheld'
 lacks "$out" "scratch line comment" 'outside line text is withheld'
 lacks "$out" "scratch review" 'outside review text is withheld'
 
+# An "updated" line is dropped when a comment on it prints anyway.
+fresh 2026-11-11T23:51:10Z
+out=$("$script")
+has "$out" "COMMENT 2026-11-11T23:51:20Z $repo#19 " 'the comment prints'
+lacks "$out" "PR updated" 'no updated line beside a comment on it'
+
+# An outsider's issue or PR is counted, not printed.
+cp "$fxs/${pre}_issues.json" "$scratch/issues.keep"
+jq 'map(.author_association = "NONE")' "$fx/${pre}_issues.json" \
+  > "$fxs/${pre}_issues.json"
+fresh $since
+out=$(PATH="$scratch/stub:$PATH" "$script")
+has "$out" "issues" 'outside issues and PRs are counted'
+lacks "$out" "PR new" 'an outside PR line is not printed'
+lacks "$out" "withheld" 'no title-withheld line'
+cp "$scratch/issues.keep" "$fxs/${pre}_issues.json"
+
 # Control characters and forged lines are neutralized.
 jq 'map(.body = "hi\u001b[31m\nCADENCE 1d\nLINK x")' \
   "$fx/repos_north-foster-farm_nff-agentic-workflow_issues_comments.json" \
@@ -99,6 +116,52 @@ out=$(PATH="$scratch/stub:$PATH" "$script")
 runs=$((runs + 1))
 case "$out" in *$'\033'*) fails=$((fails + 1)); echo "FAIL: escape kept" ;; esac
 has "$out" "  | CADENCE 1d" 'a forged CADENCE line is prefixed'
+
+# Format and separator characters (tag characters, BOM, word joiner,
+# line separator) are stripped from shown text.
+jq 'map(.body = "a󠁁b﻿c⁠d e​f")' \
+  "$fx/${pre}_issues_comments.json" > "$fxs/${pre}_issues_comments.json"
+fresh $since
+out=$(PATH="$scratch/stub:$PATH" "$script")
+has "$out" "  | abcdef" 'format characters are stripped'
+case "$out" in
+  *$'\xef\xbb\xbf'*|*$'\xe2\x81\xa0'*|*$'\xe2\x80\xa8'*|*$'\xf3\xa0'*)
+    runs=$((runs + 1)); fails=$((fails + 1))
+    echo "FAIL: an invisible character survives" ;;
+  *) runs=$((runs + 1)) ;;
+esac
+
+# Every since-bounded read is paginated, so a burst cannot push the
+# window past unread items.
+for ep in 'issues?state=all' 'issues/comments' 'pulls/comments'; do
+  runs=$((runs + 1))
+  grep -q -- "--paginate .*$repo/$ep" "$STUB_LOG" ||
+    { fails=$((fails + 1)); echo "FAIL: $ep is not paginated"; }
+done
+
+# A reply that is not JSON holds the window, for issues as for comments.
+cp "$fx/${pre}_issues_comments.json" "$fxs/${pre}_issues_comments.json"
+printf 'not json' > "$fxs/${pre}_issues.json"
+fresh $since
+out=$(PATH="$scratch/stub:$PATH" "$script"); rc=$?
+has "$out" "POLLERR $repo issues failed" 'bad issues JSON is reported'
+runs=$((runs + 1))
+[ "$(cat "$BULLPEN_STATE/since")" = "$since" ] || { fails=$((fails + 1))
+  echo "FAIL: bad issues JSON advanced the window"; }
+cp "$scratch/issues.keep" "$fxs/${pre}_issues.json"
+
+# A window that is not a timestamp is replaced, not trusted.
+fresh $since
+printf 'x; echo hacked' > "$BULLPEN_STATE/since"
+out=$(PATH="$scratch/stub:$PATH" "$script")
+lacks "$out" hacked 'a bad since file is ignored'
+
+# A LINK title is stripped of control and format characters.
+mkdir -p "$BULLPEN_STATE/to-coordinator"
+printf '# Title\033[31m\xef\xbb\xbf here\n' \
+  > "$BULLPEN_STATE/to-coordinator/m.md"
+out=$(PATH="$scratch/stub:$PATH" "$script")
+has "$out" "(Title31m here)" 'a LINK title is stripped'
 
 # Alerts: a new code-scanning alert, once. The recorded alert is open
 # in the response a real poll gets, so the open state is restored here.

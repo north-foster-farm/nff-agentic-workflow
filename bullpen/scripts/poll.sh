@@ -22,6 +22,7 @@ state="$dir/since"
 last="$dir/last-activity"
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 since=$(cat "$state" 2>/dev/null || echo "$now")
+[[ $since =~ ^[0-9TZ:-]+$ ]] || since=$now
 [ -f "$last" ] || date +%s > "$last"
 found=0
 
@@ -48,14 +49,14 @@ bots="$bots"'"github-advanced-security[bot]","dependabot[bot]"]'
 bots="${POLL_BOTS:-$bots}"
 
 # Shared jq definitions. Everything read from GitHub is untrusted text:
-# control, escape and bidi characters are stripped, and every body line
+# control, escape, format and separator characters are stripped, and every body line
 # is prefixed "  | " so no line of it can pass for one of ours.
 defs='
 def trusted: (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR"))
   or (.user.type == "Bot" and (.user.login | IN($bots[])));
 def clean: gsub("\r"; "") | gsub("\t"; " ") | split("\n")
   | map(gsub("[[:cntrl:]]"; "")
-    | gsub("[​-‏‪-‮⁦-⁩]"; ""));
+    | gsub("[\\p{Cf}\\p{Zl}\\p{Zp}]"; ""));
 def text($n): (.body // "") | clean | join("\n") | .[0:$n]
   | split("\n") | map("  | " + .) | join("\n");
 def one($n): (. // "") | clean | join(" ") | .[0:$n];
@@ -72,20 +73,20 @@ jqr() { jq -r --arg since "$since" --arg repo "$repo" \
 
 fetch() { # fetch <repo> : one repo's lines on stdout
   local repo=$1 issues prs n
-  issues=$(timeout 60 gh api \
+  issues=$(timeout 60 gh api --paginate \
     "repos/$repo/issues?state=all&since=$since&per_page=100") ||
     { echo "@@FAIL issues"; return; }
   printf '%s' "$issues" | jqr '
     [.[] | select(.updated_at > $since)] as $all
     | [$all[] | select(trusted)] as $ok
-    | ($all[] | (if .pull_request then "PR" else "ISSUE" end) + " "
+    | ($ok[] | (if .pull_request then "PR" else "ISSUE" end) + " "
       + (if .created_at > $since then "new \(.created_at)"
          elif (.closed_at // "") > $since then "closed \(.closed_at)"
          else "updated \(.updated_at)" end)
       + " \($repo)#\(.number) [\(.state)] "
-      + (if trusted then (.title | one(200))
-         else "(title withheld: outside author)" end))'
-  timeout 60 gh api \
+      + (.title | one(200) | "\"" + . + "\"")),
+      skipped("issues"; $all; $ok)' || echo "@@FAIL issues"
+  timeout 60 gh api --paginate \
     "repos/$repo/issues/comments?since=$since&per_page=100" |
     jqr '[.[] | select(.updated_at > $since)] as $all
       | [$all[] | select(trusted)] as $ok
@@ -95,7 +96,7 @@ fetch() { # fetch <repo> : one repo's lines on stdout
           + " (untrusted text follows)\n" + text(400)),
         skipped("comments"; $all; $ok)' ||
     echo "@@FAIL comments"
-  timeout 60 gh api \
+  timeout 60 gh api --paginate \
     "repos/$repo/pulls/comments?since=$since&per_page=100" |
     jqr '[.[] | select(.updated_at > $since)] as $all
       | [$all[] | select(trusted)] as $ok
@@ -108,9 +109,11 @@ fetch() { # fetch <repo> : one repo's lines on stdout
     echo "@@FAIL pulls/comments"
   # Reviews have no since filter: read them for PRs updated since.
   prs=$(printf '%s' "$issues" | jq -r --arg since "$since" \
-    '.[] | select(.pull_request and .updated_at > $since) | .number')
+    '.[] | select(.pull_request and .updated_at > $since) | .number') ||
+    { echo "@@FAIL issues"; prs=; }
   for n in $prs; do
-    timeout 60 gh api "repos/$repo/pulls/$n/reviews?per_page=100" |
+    timeout 60 gh api --paginate \
+      "repos/$repo/pulls/$n/reviews?per_page=100" |
       jq -r --arg since "$since" --arg repo "$repo" --arg n "$n" \
         --argjson bots "$bots" "$defs"'
         [.[] | select((.submitted_at // "") > $since)] as $all
@@ -168,18 +171,23 @@ while read -r name vis; do
   ( fetch "$org/$name" > "$work/$i.$name" 2>&1 ) &
   pids="$pids $!"
 done <<< "$repolist"
-wait $pids
+wait $pids || true
 failed=0
 for f in "$work"/*.*; do
   [ -e "$f" ] || continue
   name=${f##*/}; name=${name#*.}
+  # A bare "updated" line is dropped when the same poll prints a comment
+  # on that issue, since the comment already shows the activity.
   out=$(awk -v repo="$org/$name" '
+    NR == FNR { if ($1 ~ /^(COMMENT|EDITED)$/) seen[$3] = 1; next }
+    ($1 == "ISSUE" || $1 == "PR") && $2 == "updated" && ($4 in seen) {
+      next }
     /^@@SKIP / { n[$2] += $3; next }
     /^@@FAIL / { print "POLLERR " repo " " $2 " failed"; bad = 1; next }
     { print }
     END { s = ""
       for (k in n) s = s (s ? ", " : "") n[k] " " k
-      if (s) print "SKIPPED " repo ": " s " from others" }' "$f")
+      if (s) print "SKIPPED " repo ": " s " from others" }' "$f" "$f")
   [ -z "$out" ] || { printf '%s\n' "$out"; found=1; }
   case "$out" in *POLLERR*) failed=1; found=1 ;; esac
 done
@@ -239,8 +247,10 @@ fi
 link="${CLAUDE_LINK:-$HOME/Code/nff/claude-link}/to-coordinator"
 for f in "$link"/*.md; do
   [ -e "$f" ] || continue
-  title=$(grep -m1 '^# ' "$f" | sed 's/^# //')
-  echo "LINK $f${title:+ ($title)}"
+  title=$(grep -m1 '^# ' "$f" | sed 's/^# //' | LC_ALL=C tr -cd \
+    '[:alnum:] ._,:;/#()-' | cut -c1-100 || true)
+  echo "LINK $(printf %s "$f" | LC_ALL=C tr -cd \
+    '[:alnum:] ._/-')${title:+ ($title)}"
   found=1
 done
 

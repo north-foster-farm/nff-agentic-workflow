@@ -55,12 +55,17 @@ old_value() { # old_value <key> <file>
 for repo in $repos; do
   rows=$(api --paginate "repos/$repo/issues?state=open&per_page=100" |
     jq -r '.[] | select(.pull_request == null) | [.number,
-      (.title[0:60] | gsub("[[:cntrl:]]"; "")), .updated_at,
+      (.title | gsub("[[:cntrl:]]"; "") | gsub("[\\p{Cf}\\p{Zl}\\p{Zp}]"; "")
+        | .[0:60] | "\"" + . + "\""), .updated_at,
       ([.labels[]?.name | select(startswith("lane:"))] | length > 0),
       (.issue_dependencies_summary.blocked_by // 0)] | @tsv')
-  # One jq pass per repo; a tab cannot occur in a title (stripped above).
+  # One jq pass per repo. A tab cannot occur in a title (stripped above)
+  # and the quoted title is never empty, so no field collapses.
   while IFS=$'\t' read -r n t upd lane nb; do
-    [ -n "$n" ] || continue
+    case "$n" in ''|*[!0-9]*) continue ;; esac
+    case "$nb" in ''|*[!0-9]*) continue ;; esac
+    case "$lane" in true|false) ;; *) continue ;; esac
+    [[ $upd =~ ^[0-9TZ:-]+$ ]] || continue
     key="$repo#$n"
     stage=""
     if [ "$lane" = true ]; then
@@ -70,8 +75,8 @@ for repo in $repos; do
       if [ -n "$was" ] && [ "$was_upd" = "$upd" ]; then
         stage=$was_stage
       else
-        stage=$(fieldval "$(api "repos/$repo/issues/$n/issue-field-values")" \
-          Stage)
+        fv=$(api "repos/$repo/issues/$n/issue-field-values") || exit 1
+        stage=$(fieldval "$fv" Stage)
         stage="${stage:-none}"
       fi
       printf '%s\t%s\t%s\n' "$key" "$stage" "$upd" >> "$new_stages"
@@ -85,10 +90,11 @@ for repo in $repos; do
     fi
     [ "$nb" -gt 0 ] || continue
     if [ "$lane" != true ]; then
-      stage=$(fieldval "$(api "repos/$repo/issues/$n/issue-field-values")" \
-        Stage)
+      fv=$(api "repos/$repo/issues/$n/issue-field-values") || exit 1
+      stage=$(fieldval "$fv" Stage)
     fi
-    for b in $(api "repos/$repo/issues/$n/dependencies/blocked_by" |
+    deps=$(api "repos/$repo/issues/$n/dependencies/blocked_by") || exit 1
+    for b in $(printf '%s' "$deps" |
       jq -r '.[] | select(.state == "open")
         | "\(.repository_url | sub(".*/repos/"; ""))#\(.number)"'); do
       echo "$key<-$b" >> "$new_blocks"
@@ -97,16 +103,19 @@ for repo in $repos; do
       fi
       case "$stage" in ready|active) ;; *) continue ;; esac
       brepo=${b%%#*}; bnum=${b##*#}
-      owner=$(fieldval "$(api "repos/$brepo/issues/$bnum/issue-field-values")" \
-        Owner)
+      fv=$(api "repos/$brepo/issues/$bnum/issue-field-values") || exit 1
+      owner=$(fieldval "$fv" Owner)
       [ "$owner" = james ] || continue
-      last=$(api "repos/$brepo/issues/$bnum/comments?per_page=100" |
+      cm=$(api "repos/$brepo/issues/$bnum/comments?per_page=100") ||
+        exit 1
+      last=$(printf '%s' "$cm" |
         jq -r '[.[] | select(.user.login == "github-actions[bot]"
           or (.author_association
             | IN("OWNER", "MEMBER", "COLLABORATOR")))
           | .created_at] | max // empty')
       [ -n "$last" ] ||
-        last=$(api "repos/$brepo/issues/$bnum" --jq .created_at)
+        last=$(api "repos/$brepo/issues/$bnum" --jq .created_at) ||
+        exit 1
       age=$(jq -n --arg t "$last" \
         '(now - ($t | fromdateiso8601)) / 3600 | floor')
       [ "$age" -ge "$hours" ] || continue

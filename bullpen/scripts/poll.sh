@@ -49,8 +49,8 @@ bots="$bots"'"github-advanced-security[bot]","dependabot[bot]"]'
 bots="${POLL_BOTS:-$bots}"
 
 # Shared jq definitions. Everything read from GitHub is untrusted text:
-# control, escape, format and separator characters are stripped, and every body line
-# is prefixed "  | " so no line of it can pass for one of ours.
+# control, escape, format and separator characters are stripped, and
+# every body line is prefixed "  | " so no line of it can pass for one of ours.
 defs='
 def trusted: (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR"))
   or (.user.type == "Bot" and (.user.login | IN($bots[])));
